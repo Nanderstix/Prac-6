@@ -77,7 +77,6 @@ def service_pushed(channel):
     if ( not locked ):
         print("Locking.")
         lock()
-        locked = True
         
     else:
         print("Service pushed, awaiting combination code.")
@@ -98,7 +97,8 @@ def service_pushed(channel):
         awaitingsymbol = True
         goingup = True
         
-        # reset logs of previous attempt 
+        # reset logs of previous attempt
+        runcounter = 0
         symbolslogged = 0 
         codelog.clear()
         dirlog.clear()
@@ -125,21 +125,30 @@ def getreading():
     return pot  
 
 def unlock():
+    global locked
+    print("Correct! Unlocking.")
+    
     # make a happy noise
     pygame.mixer.music.load("happy noise.wav")
     pygame.mixer.music.play()
+    
     # make U-Line high for 2 secs, then send low
-    print("Correct! Unlocking.")
     GPIO.output(unlockpin, 1)
     time.sleep(2)
     GPIO.output(unlockpin, 0)
+    
+    locked = False
 
 def lock():
-    # make L-Line high for 2 secs, then send low
+    global locked
     print("Locked succesfully.")
+    
+    # make L-Line high for 2 secs, then send low
     GPIO.output(lockpin, 1)
     time.sleep(2)
     GPIO.output(lockpin, 0)
+    
+    locked = True
 
 def unlockfail():
     print("Combination incorrect, press service button to try again.")
