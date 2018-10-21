@@ -73,37 +73,31 @@ mcp = Adafruit_MCP3008.MCP3008(clk=CLK, cs=CS, mosi=MOSI, miso=MISO)
 # handle service button presses
 def service_pushed(channel):
     
-    global locked
-    if ( not locked ):
-        print("Locking.")
-        lock()
-        
-    else:
-        print("Service pushed, awaiting combination code.")
+    print("Service pushed, awaiting combination code.")
+
+    global sleeping
+    global awaitingattempt
+    global awaitingsymbol
+    global runcounter
+    global lastreading
+    global symbolslogged
+    global codelog
+    global dirlog
+    global waitcount
+    global goingup
     
-        global sleeping
-        global awaitingattempt
-        global awaitingsymbol
-        global runcounter
-        global lastreading
-        global symbolslogged
-        global codelog
-        global dirlog
-        global waitcount
-        global goingup
-        
-        sleeping = False
-        awaitingattempt = True
-        awaitingsymbol = True
-        goingup = True
-        
-        # reset logs of previous attempt
-        runcounter = 0
-        symbolslogged = 0 
-        codelog.clear()
-        dirlog.clear()
-        waitcount = 0
-        lastreading = getreading()
+    sleeping = False
+    awaitingattempt = True
+    awaitingsymbol = True
+    goingup = True
+    
+    # reset logs of previous attempt
+    runcounter = 0
+    symbolslogged = 0 
+    codelog.clear()
+    dirlog.clear()
+    waitcount = 0
+    lastreading = getreading()
 
 GPIO.add_event_detect(servicepin, GPIO.RISING, service_pushed, delay);
 
@@ -126,11 +120,7 @@ def getreading():
 
 def unlock():
     global locked
-    print("Correct! Unlocking.")
-    
-    # make a happy noise
-    pygame.mixer.music.load("happy noise.wav")
-    pygame.mixer.music.play()
+    print("Unlocked successfully.")
     
     # make U-Line high for 2 secs, then send low
     GPIO.output(unlockpin, 1)
@@ -150,11 +140,25 @@ def lock():
     
     locked = True
 
-def unlockfail():
+def combofail():
     print("Combination incorrect, press service button to try again.")
 
+    # make a sad noise
     pygame.mixer.music.load("sad noise.wav")
     pygame.mixer.music.play()
+    
+def combosuccess():
+    global locked
+    print("Combination correct!")
+
+    # make a happy noise
+    pygame.mixer.music.load("happy noise.wav")
+    pygame.mixer.music.play()
+    
+    if (locked):
+        unlock()
+    else:
+        lock()
 
 def sort (x): # sort array into output array. Assume array is of an ordered type 
     y = [0] * len(x)
@@ -203,6 +207,12 @@ def checkcombination(inputdurations, inputdirections): # takes in a combination 
     
     print("Checked combination")
     sleeping = True
+    
+    if (correct):
+        combosuccess()
+    else:
+        combofail()
+    
     return correct
 
 def logsymbol(duration, direction):
@@ -220,12 +230,12 @@ def logsymbol(duration, direction):
     else:
         print("Turned left for " + str(duration) + "s")
     
-#try-finally block to handle GPIO cleanup and robust termination
+# try-finally block to handle GPIO cleanup and robust termination
 try:
-    #loop for programme execution    
+    # Main loop for programme execution    
     while True: # make the code run until an exception is thrown
         
-        if not (sleeping): # foil attempts when service button hasn't been pressed
+        if not (sleeping): 
             if (tick * tolerance % 1 == 0):
                 pygame.mixer.music.load("click.wav")
                 pygame.mixer.music.play()
@@ -235,7 +245,7 @@ try:
                 runcounter += 1
             reading = getreading()
         else:
-            continue
+            continue # foil attempts when service button hasn't been pressed
  
         if ((reading <= lastreading + dialmargin) and (reading >= lastreading - dialmargin)): # we've stopped (temporarily or otherwise...) [with dialmargin]
             waitcount += 1 
@@ -247,10 +257,7 @@ try:
                     sleeping = True # put back to sleep, awaiting service button
                     
                 elif not (awaitingattempt): # user has entered something and time is up
-                    if (checkcombination(codelog, dirlog)): # check if code entered is correct
-                        unlock()
-                    else:
-                        unlockfail()
+                    checkcombination(codelog, dirlog) # check if code entered is correct
                 
                     waitcount = 0
                     sleeping = True # put back to sleep, awaiting service button
@@ -281,6 +288,9 @@ try:
             awaitingattempt = False # the user has done something
             awaitingsymbol = False
             waitcount = 0
+
+        if (symbolslogged >= 16): # max no. of symbols is 16 - just to stop endless symbol entering...
+            checkcombination(codelog, dirlog) 
 
         lastreading = reading
         time.sleep(tolerance)
