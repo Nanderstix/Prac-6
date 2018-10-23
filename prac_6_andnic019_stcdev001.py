@@ -160,12 +160,15 @@ def combosuccess():
     else:
         lock()
 
-def sort (x): # sort array into output array. Assume array is of an ordered type 
-    y = [0] * len(x)
+def sort (z): # sort array into output array. Assume array is of an ordered type 
+    y = [0] * len(z)
+    x = [0] * len(z)
+    for k in range(len(z)):
+        x[k] = z[k] # prevent destruction of original array...
     
-    for j in range(len(x)):
+    for j in range(len(z)):
         # find the min element in unsorted x
-        # assume the min is the first element */
+        # assume the min is the first element 
         minindex = 0;
         # test against elements after j to find the smallest
         for i in range(len(x)):
@@ -196,9 +199,6 @@ def checkcombination(inputdurations, inputdirections): # takes in a combination 
         else: # must just check time of symbols
             sortedcombo = sort(combocode.durations)
             sortedinput = sort(inputdurations)
-            
-            print(sortedinput)
-            print(sortedcombo)
             
             for j in range(len(sortedinput)): 
                 if (abs(sortedcombo[j] - sortedinput[j]) > timemargin):
